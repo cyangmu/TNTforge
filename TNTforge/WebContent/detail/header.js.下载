@@ -1,0 +1,609 @@
+
+var lastkeyword = '';	
+// 设置错误信息
+
+var isError = false;
+
+var isAutoComplate = true;
+
+/* 登录用函数 */
+// 登录手机号码验证
+//function min_loginMobileErrorMsg($obj, isfoucs) {
+//	if (isNull($obj.val())) {
+//		isError = false;
+//		return setValidInRegister($obj, false, "请输入您的手机号码", isfoucs);
+//	} else if (!isFormatMobile($.trim($obj.val()))) {
+//		isError = false;
+//		return setValidInRegister($obj, false, "请输入11位正确手机号码", isfoucs);
+//	} else {
+//		isError = true;
+//		return setValidInRegister($obj, true, "", isfoucs);
+//	}
+//}
+
+// 登录密码验证
+//function min_loginPasswordErrorMsg($obj, isfoucs) {
+//	if (isNull($obj.val())) {
+//		isError = false;
+//		return setValidInRegister($obj, false, "请输入您的密码", isfoucs);
+//	} else {
+//		if ($obj.val().length < 6) {
+//			isError = false;
+//			setValidInRegister($obj, false, "密码长度不能少于6位");
+//		} else if ($obj.val().length > 255) {
+//			isError = false;
+//			setValidInRegister($obj, false, "密码长度不能超过255位");
+//		} else {
+////			if (!isPassword($obj.val())) {
+////				isError = false;
+////				return setValidInRegister($obj, false, "请输入由6-20位数字或英文大小写字母组成的密码（不含空格或特殊符号）", isfoucs);
+////			} else {
+//				isError = true;
+//				return setValidInRegister($obj, true, "", isfoucs);
+////			}
+//		}
+//	}
+//}
+
+// 登录提交按钮绑定事件
+// ajax请求提交方式
+//function loginminformsubmit() {
+	//先验证是否是老用户，若是老用户，则跳出弹窗
+
+
+	// 发送ajax请求到后台去，验证手机 号码
+//	var validateMobileUrl = _contextPath + "/member/inspectOldMember.json";
+//
+//	var mobile = $("#min_mobile_input").val();
+//	var json = {
+//		'mobile' : mobile,
+//	};
+	// 发送ajax请求到后台，执行发送验证码的操作（此为异步请求）
+//	$.spice.asyncXhrGet(validateMobileUrl, json, {
+//		success : function(data) {
+//			// 后台返回数据的处理
+//			if (data.result) {
+//
+//				if (data.statusCode == 'isOldMember') {
+//					customDialog.show();
+//					$("#forgetpwd-mobile-input").val(
+//							$("#min_mobile_input").val())
+//					$("#imgAuthCode_pws").trigger("tap");
+//					$(".reset-word").html("欢迎回来<br><br><h5>为提供更安全便利的购物体验，邀您绑定手机号码</h5>");
+//					return;
+//				}
+//
+//			} else {
+//				loginminformsubmitaction();
+//			}
+//		}
+//	});
+
+//}
+
+function loginminformsubmitaction(){
+
+//	$("#min_password_input").blur();
+//	$("#min_mobile_input").blur();
+
+//	var loginUrl = page_base + "/member/login.json";
+	var loginUrl =null; 
+	if(location.protocol == 'https:'){
+		loginUrl=_contextPath+ "/member/login.json";
+	}else{
+		loginUrl=_contextPath + "/member/login.json";
+	}
+	
+	// 前台密码的加密处理
+	var password = $("#min_password_input").val();
+	var loginName = $("#min_mobile_input").val();
+
+	var crypt = new JSEncrypt();
+	crypt.setPublicKey($("#sensitivePublicKey").val());
+	var enc_password = crypt.encrypt(password);
+	var enc_loginName = loginName;
+
+	// 判断是否选中"记住我",默认选中
+	var isRememberPassword = true;
+	var isRememberPasswordClass = $("#min_isRememberPassword").parent().attr("class");
+	if (isRememberPasswordClass != 'form-checkbox is-checked') {
+		isRememberPassword = false;
+	}
+
+	var json = {
+		'loginName' : enc_loginName,
+		'password' : enc_password,
+		'isRemberMePwd' : isRememberPassword,
+	};
+	// 发送ajax请求到后台，执行登录操作
+	var data = $.spice.syncXhrPost(loginUrl, json);
+
+	// 后台返回数据的处理
+	if (!data.result) {
+		// 表示登录失败
+		// 后台操作之后，后台返回值的处理
+		if ( 'loginerror.loginName.notavailable'==data.resultMessage.message ) {
+			setValidInRegister("#min_mobile_input", false, "请输入您的手机号码", false);
+			return;
+		} else if ('loginerror.password.notavailable'==data.resultMessage.message  ) {
+			setValidInRegister("#min_password_input", false, "请输入您的密码", false);
+			return;
+
+		} else if ( 'loginName.error'==data.resultMessage.message ) {
+			setValidInRegister("#min_mobile_input", false, "请输入11位正确手机号码",
+					false);
+			return;
+		} else if ('password.minlength.error'== data.resultMessage.message ) {
+			setValidInRegister("#min_password_input", false, "密码长度不能少于6位",
+					false);
+			return;
+		} else if ('password.maxlength.error' ==data.resultMessage.message  ) {
+			setValidInRegister("#min_password_input", false, "密码长度不能超过20位",
+					false);
+			return;
+		} else if ('login.failure'==data.resultMessage.message) {
+			setValidInRegister("#min_mobile_input", false, "用户名或密码错误", false);
+			return;
+		}
+	} else {
+		$("#loginName").val(loginName);
+		
+		if (window.location.pathname == "/member/login") {
+			// 如果是登录注册页的快速登录，则定位到主页去
+			window.location.href = page_base + "/index";
+		} else {
+			// 登录成功，刷新页面，不进行页面跳转
+			location.reload();
+		}
+		_gsq.push(["T","GWD-002994","trackEvent","Top-drop-down","Login",location.pathname]);			
+	}
+
+}
+
+function autoComplate(objclass){
+	console.warn("autoComplate--------->");
+	var val = $(objclass).val();
+	var type = 0;
+	if(null != val && val.replace(/^ +/gm,'').length == 0){
+		return;
+	}
+	//lastSearchKeyword = val;
+	/*var products = $(objclass).parents('.global-search-dropdown').find('.dimsearch-suggest-container');*/
+	
+	var products = $(objclass).parents('#global-search-dropdown').next();
+	if($(objclass).attr("class")=="mb-search-input"){
+		type=1;
+	}
+	
+	
+	var json = {"keyword":val,"type":type};
+	//校验是否重复输入
+	if(lastkeyword == val){
+		return;
+	}
+	if($.spice.isNull(val) || '' == val){
+		$(products).addClass('none').hide();
+		return;
+	}
+	
+	var data = $.spice.syncXhr(page_base+'/search/relation', json);
+	//console.warn("response===========");
+	//$(products).removeClass('none');
+	if (!$.spice.isNull(data)){
+		// 显示商品详情
+		if(data!=""){
+			$(products).html(data);
+			$(products).removeClass('none').show();
+			lastkeyword = val;
+		}else{
+			$(products).addClass('none').hide();
+		}
+	}
+}
+$(function(){
+	
+//	setupLoginPanel();
+	
+	/** 如果是双头或者是双尾都给隐藏掉 **/
+//	if($("header .top-notice").length>1){
+//		$("header .top-notice:first").remove();
+//	}
+//	if($("header").length>1){
+//		$("header:first").remove();
+//	}
+	if($("versiondata").length>1){
+		$("versiondata:first").html($("versiondata:last").html());
+	}
+	if($("#wrapper footer").length>1){
+		$("#wrapper footer:first").remove();
+	}
+	if($("#wrapper .footer-returnTop").length>1){
+		$("#wrapper .footer-returnTop:first").remove();
+	}
+	/* 登录 */
+	/** ---------登录所有失去焦点验证Start------------ */
+	$("#min_mobile_input").blur(function() {
+		loginMobileErrorMsg($(this), false);
+	});
+	$("#min_password_input").blur(function() {
+		passwordErrorMsg($(this), false);
+	});
+	/** ---------登录所有失去焦点验证End------------ */
+
+	// 登录按钮绑定登录事件
+	$("#min_loign_btn").bind("click", loginminformsubmitaction);
+	// 回车事件
+	$("#min_mobile_input,#min_password_input").keypress(function(e) {
+		if (e.keyCode == 13) {
+			loginminformsubmitaction();
+		}
+	});
+	
+	
+	$('.mb-search-input').unbind();
+	// 搜索框的输入事件
+	$('.mb-search-input').on({
+		'focus': function(){
+			this.value = '';
+			var products = $(this).parents('#global-search-dropdown').next();
+			$(products).addClass('none');
+		},
+		'input': function(){
+			//console.warn("input======"+$('.mb-search-input').val());
+			//autoComplate('.global-search-text');
+			//延迟自动补全
+			//console.warn(isAutoComplate+"======");
+			setTimeout("autoComplate('.mb-search-input')", 2000);
+		}
+	});
+	
+	/*$('.search-input').unbind();*/
+	// 搜索框的输入事件
+	$('.search-input').on({
+		'focus': function(){
+			this.value = '';
+			var products = $(this).parents('#global-search-dropdown').next();
+			$(products).addClass('none');
+		},
+		'input': function(){
+			//console.warn("input======"+$('.search-input').val());
+			//autoComplate('.global-search-text');
+			//延迟自动补全
+			//console.warn(isAutoComplate+"======");
+			setTimeout("autoComplate('.search-input')", 2000);
+		}
+	});
+	
+	$('ul#mb-list li').live('tap', function(e) {		
+		 $(".mb-search-input").val( $(this).find("a").eq(0).text());
+	})
+	$('ul#pc-list li').live('tap', function(e) {		
+		 $(".search-input").val( $(this).find("a").eq(0).text());
+	})
+	
+	//退出登录
+	$('#logged-in').on('tap',function(){
+		var url = _contextPath + "/member/loginOut.json"
+			$.spice.asyncXhrGet(_contextPath + "/member/loginOut.json",{},
+			{
+				success : function(data) {
+					if(data && data.result)
+						window.location.href = _contextPath + "/";//注销回首页
+				}
+			});
+	});	
+	
+	
+	
+	$('body').on('tap', '.quicksearch_articlescraplist', function(){
+		window.location.href=page_base+	'/search/articlescrap?keyword='+$("#keyword").val();
+	});	
+	//binrui.dong 添加，左上角返回按钮事件
+	$('.header-shopping-left .transcation-back').on('tap',function(){
+		var back_page = document.referrer;
+		if(back_page && (back_page.indexOf('/shoppingcart')>-1 
+				|| back_page.indexOf('/item.htm')>-1)){
+			window.location.href = back_page;	
+		}else if(back_page && back_page.indexOf('/member/checkout-login')>-1){
+			history.go(-2);
+		}else{
+			window.location.href = page_base + "/shoppingcart";//miniCart
+		}
+	});
+	
+	var wechatDialog = $.spice.dialog({
+	    title: '<img src="'+static_base+'/images/wechat/wechat-dialog.jpg" width="244" height="244" alt="" />'
+	    , content: '请使用微信扫一扫分享到微信'
+	    , dialogClass: 'wechatDialog'
+	});
+	
+   	$('.hover_icons .wechat-icon').live('tap',function(){
+		var url = $(this).parent().siblings('.product-img').attr('href')
+			,code_src = _contextPath + "/getqrCode?codeurl=" + url;
+		$('.wechatDialog img').attr("src",code_src);
+		wechatDialog.show();
+	});
+   	
+   	$(".mobile-search .search-btn").on("tap", function(){
+   		$("#mobileSearch").submit();
+   	});
+   	
+   	$(".events-search .search-btn").on("tap", function(){
+   		$("#pcSearch").submit();
+   	});
+   	
+  //国双代码 begin--
+   	$(".events-wechatBtn .title-txt").on("tap", function(){
+   		_gsq.push(["T","GWD-002994","trackEvent","Top-bar","To-contact",location.pathname]);			
+   	});
+   	
+   	$(".hover-login").on("tap", function(){
+   		_gsq.push(["T","GWD-002994","trackEvent","Top-bar","To-login",location.pathname]);			
+   	});
+   	
+   	$("#to-registerH").on("tap", function(){
+   		_gsq.push(["T","GWD-002994","trackEvent","Top-bar","Register",location.pathname]);			
+   	});   	   	
+   	$("body").on("tap", ".events-minicart #cart-box", function(event){
+   		_gsq.push(["T","GWD-002994","trackEvent","Top-drop-down","To-cart",location.pathname]);
+   		//window.location.href=page_base+'/shoppingcart';
+   		event.stopPropagation();
+   	});
+     	
+   	 $("body").on("tap", ".events-minicart #cart-checkcart", function(event){
+   		_gsq.push(["T","GWD-002994","trackEvent","Top-drop-down","To-order",location.pathname]);
+   		//window.location.href=page_base+'/transaction/check';
+   		event.stopPropagation();
+   	});
+   	
+ 	$("body").on("tap", ".events-minicart #home-cart", function(event){
+   		_gsq.push(["T","GWD-002994","trackEvent","Top-bar","To-cart",location.pathname]);
+   		//window.location.href=page_base+'/shoppingcart';
+   		event.stopPropagation();
+   	});  	
+   	$(".events-mobMinicart").on("tap", function(){
+   		_gsq.push(["T","GWD-002994","trackEvent","Top-bar","To-cart",location.pathname]);			
+   	});
+   	$("body").on("tap", ".btn-bag .btn-bag-label #contacts-mk", function(event){
+   		_gsq.push(["T","GWD-002994","trackEvent","Top-drop-down","Customer-service",location.pathname]);
+   	});
+/*   	$(".btn-bag .btn-bag-label #contact-Mk").on("tap", function(){
+   		_gsq.push(["T","GWD-002994","trackEvent","Top-drop-down","Customer-service",location.pathname]);
+   	});*/
+   	
+   	$(".btn-bag-register").on("tap", function(){
+   		_gsq.push(["T","GWD-002994","trackEvent","Top-drop-down","Register",location.pathname]);			
+   	});
+   
+   	$(".nav-pills #to-navigations").on("tap", function(){
+   		_gsq.push(["T","GWD-002994","trackEvent","Navigation",$(this).eq(0).text(),location.pathname]);			
+   	});
+   	
+   	$(".nav-pills #to-subnavigations").on("tap", function(){
+   		_gsq.push(["T","GWD-002994","trackEvent",$(this).parents("#to-navigation").find('a').eq(0).text(),$(this).eq(0).text(),location.pathname]);			
+   	});
+   	
+   	$(".new-shop-img .cms-imgarticle-edit").on("tap", function(){
+   		_gsq.push(["T","GWD-002994","trackEvent",$(this).parents("#to-navigation").find('a').eq(0).text(),"Top-banner",location.pathname]);			
+   	});
+   	
+   	
+  //国双代码 end--
+   	
+   	$("body").on("tap", ".mob-cancellation", function(){
+   		$('.logged-in li :last').trigger('tap');
+   	});
+   	
+   	
+//   	if($(".nav-header-personal li").hasClass('ismobile')){
+//   		var logout = $(".nav-header-personal .ismobile a");
+//   		logout.find("span").text("注销");
+//   		logout.attr("href", "javascript:void(0)");
+//   	}   	
+  //我的维修点击事件
+	$("#maintain").live("click", function(){
+		var customer_name=$.base64.encode($("#customer_name").val());
+		var customer_tel=$.base64.encode($("#customer_tel").val());
+		var Customerid=$.base64.encode($("#Customerid").val());
+		var Storeid=$.base64.encode($("#Storeid").val());
+		var url ="";
+		if(page_base.indexOf("www.michaelkors.cn")>-1){
+			url="http://product-care.michaelkors.cn/CLB_MK_wechatNew/search/Prompt";
+		}else{
+			url ="http://mk.garnier-smp.com/CLB_MK_wechatNew/search/Prompt";
+		}
+	 window.open(url+"?C="+Customerid+"&S="+Storeid+"&cn="+customer_name+"&ct="+customer_tel);
+	});
+});
+
+
+
+
+//getLocation获取坐标
+function getLocation(){
+	
+	if (getCookie("off_store") != null) {
+		showCloestStore();
+		return;
+	}
+	
+    var options={
+        enableHighAccuracy:true,
+        timeout: 5000,
+        maximumAge: 60000
+    };
+    if(navigator.geolocation){
+        //浏览器支持geolocation
+        navigator.geolocation.getCurrentPosition(onSuccess,onError,options);
+    }else{
+        //浏览器不支持geolocation
+    	hideClosetStore();
+    	//ClosestStore();
+    }
+}
+//成功时
+function onSuccess(position){
+    //经度
+    var longitude = position.coords.longitude;
+    //纬度
+    var latitude = position.coords.latitude;
+    
+    var json = {"x":longitude, "y":latitude};
+    ClosestStore(json);
+}
+//失败时
+function onError(error){
+    switch(error.code){
+        case 1:
+//	        alert("位置服务被拒绝");
+        	hideClosetStore();
+	        break;
+        case 2:
+//	        alert("暂时获取不到位置信息");
+	        ClosestStore();
+	        break;
+        case 3:
+//	        alert("获取信息超时");
+	        ClosestStore();
+	        break;
+        case 4:
+//        	alert("未知错误");
+        	ClosestStore();
+        	break;
+        default:
+        	ClosestStore();
+    }
+}
+
+function ClosestStore(json){
+	if (!json) {
+		getGpsFromIP();
+	} else {
+		getClosetStoreFromServer(json);
+	}
+}
+
+function getClosetStoreFromServer(json) {
+	var data = $.spice.syncXhrPost(_contextPath + "/storeLocator/closestStore.json", json);
+	if (data.result) {
+		setCookie("off_store", data.messageMap.name);
+		setCookie("off_store_add", data.messageMap.address);
+		setCookie("off_form", data.messageMap.form_origin);
+		setCookie("off_destination", data.messageMap.to_destination);
+		showCloestStore();
+	}
+}
+
+function showCloestStore() {
+	var storeHtml='<div class="mob-text"><a>查找您附近的线下精品店</a><p>' + getCookie("off_store") + '</p></div>'+
+	'<div class="heard-detailed-address"><p>'+ getCookie("off_store_add") + '</p>'+
+	'<a href="baidumap://map/direction?origin=' + getCookie("off_form") + '&destination=' + getCookie("off_destination") + 
+	'&mode=driving&src=MichaelKors中国官方在线精品店">获取路线</a></div>' +
+	'<div class="close-detailed-address">打开详情<i class="icon icon-careta"></i></div>';
+
+	$("header.header .nav-morestore").html(storeHtml);
+	
+	$(".close-detailed-address").on("tap",function(){
+		if($(this).hasClass("is-open")){
+			$(this).html("打开详情<i class='icon icon-careta'></i>");
+		}else{
+			$(this).html("收起详情<i class='icon icon-careta'></i>");
+		}
+		
+		$(".heard-detailed-address").toggle();
+		$(".close-detailed-address").toggleClass("is-open");
+	});
+}
+
+function hideClosetStore() {
+	$(".nav-morestore").hide();
+}
+
+function getGpsFromIP() {
+    $.ajax({  
+        type : "get",  
+        async: true,  
+        url : "https://api.map.baidu.com/location/ip?ak=pClV5g27GrfbxCOXIKs2m4PXruvyklnY&coor=bd09ll&callback_type=jsonp&callback=callbackBaiduIpGps",  
+        dataType : "jsonp",//数据类型为jsonp  
+        jsonp: "jsonpCallback",//服务端用于接收callback调用的function名的参数  
+    });  
+}
+
+function callbackBaiduIpGps(data) {
+	if(data && data.content){
+		var json = {"x":data.content.point.x, "y":data.content.point.y};
+		getClosetStoreFromServer(json);
+	}
+}
+
+
+function setCookie(name, value) {
+	document.cookie = name + "=" + escape(value) + ";";
+}
+function getCookie(name) {
+	var arr, reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)");
+	if (arr = document.cookie.match(reg)) {
+		return unescape(arr[2]);
+	} else {
+		return null;
+	}
+}
+
+function setupLoginPanel() {
+	$.spice.asyncXhr(_contextPath + '/member/getMemberContext', "", {
+		success : function(data) {
+			if (data) {
+				$(".nav-header-personal .events-loginBtn").css("display", "none");
+				$(".nav-header-personal .my-account").css("display", "block");
+				if (data.memberGroup == 'INTERNAL') {
+					$("#myAccountCoupon").css("display", "none");
+					$("#myAccountPersonalData").css("display", "none");
+				}
+			} else {
+				$(".nav-header-personal .events-loginBtn").css("display", "block");
+				$(".nav-header-personal .my-account").css("display", "none");
+			}
+		}, error : function() {
+			$(".nav-header-personal .events-loginBtn").css("display", "block");
+			$(".nav-header-personal .my-account").css("display", "none");
+		}
+	});
+}
+
+//function delayAutoComplate(){
+//	console.warn("delayAutoComplate======");
+//	isAutoComplate = true;
+//}
+
+//function isSearchChange(){
+//	console.warn("isSearchChange======");
+//	if(lastkeyword != $("#keyword").val()){
+//		console.warn("isSearchChange======true");
+//		autoComplate('.global-search-text');
+//		lastkeyword = '';
+//	}
+//	
+//}
+
+//$(function(){
+//	getLocation();
+//});
+
+function isAilpayApp() {
+	var userAgent = navigator.userAgent;
+	var isAliApp = userAgent.indexOf("AliApp") > -1;
+	if (isAliApp) {
+		return true;
+	}
+	return false;
+}
+
+$(function(){
+	if(getCookie('u_mobile')){
+		$('.nav-header-personal .my-account').removeClass('none');
+		$('.nav-header-personal .events-loginBtn').hide();
+	}else{
+		$('.nav-header-personal .events-loginBtn').removeClass('none');
+	}
+});
+
